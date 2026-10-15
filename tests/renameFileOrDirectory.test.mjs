@@ -147,3 +147,13 @@ test("unsupported per-call mode is rejected without moving files", async t => {
   assert.equal(await readFile(f.from, "utf8"), f.source);
   assert.equal(existsSync(f.to), false);
 });
+
+test("relative move paths produce absolute paths in the summary", async t => {
+  const f = await fixture(t);
+  assertSummary(body(await f.call({
+    from: "src/old.ts",
+    to: "src/nested/new.ts",
+    responseMode: "summary",
+  })), f);
+  await assertMoved(f);
+});

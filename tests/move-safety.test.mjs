@@ -102,3 +102,31 @@ for (const fault of ["write", "rename"]) {
     assert.equal(await f.readConsumer(), 'export { result } from "./nested/new";\n');
   });
 }
+
+for (const directory of [false, true]) {
+  test(`successful ${directory ? "directory" : "file"} move returns the exact preview edits`, async t => {
+    const f = await fixture(t, { directory });
+    const preview = await f.call({ preview: true });
+    assert.notEqual(preview.isError, true, JSON.stringify(preview));
+    const expected = JSON.parse(preview.content[0].text);
+    assert.equal(expected.length, 2);
+    const sourceReference = directory ? "../value" : "./value";
+    const consumerReference = directory ? "./old/module" : "./old";
+    assert.deepEqual(
+      new Map(expected.map(({ fileName, textChanges }) => [fileName, textChanges])),
+      new Map([
+        [f.from, [{
+          span: { start: f.source.indexOf(sourceReference), length: sourceReference.length },
+          newText: directory ? "../../value" : "../value",
+        }]],
+        [f.consumer, [{
+          span: { start: f.consumerSource.indexOf(consumerReference), length: consumerReference.length },
+          newText: directory ? "./nested/moved/module" : "./nested/new",
+        }]],
+      ]),
+    );
+    const moved = await f.call();
+    assert.notEqual(moved.isError, true, JSON.stringify(moved));
+    assert.deepEqual(JSON.parse(moved.content[0].text).edits, expected);
+  });
+}
